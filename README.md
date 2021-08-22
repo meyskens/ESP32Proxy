@@ -16,7 +16,78 @@ Congrats it is running! Now you need to connect the ESP32 to it over a websocket
 
 ## ESP32 Code
 ```cpp
-// TODO
+#include <Arduino.h>
+#include <WiFi.h>
+#include <WiFiClientSecure.h>
+#include <WebSocketsClient.h>
+
+WebSocketsClient webSocket;
+
+
+// Replace with your network credentials
+const char* ssid = "";
+const char* password = "";
+
+void webSocketEvent(WStype_t type, uint8_t * payload, size_t length) {
+  String request;
+  String path;
+
+    switch(type) {
+        case WStype_DISCONNECTED:
+            Serial.printf("[WSc] Disconnected!\n");
+            break;
+        case WStype_CONNECTED:
+            Serial.printf("[WSc] Connected to url: %s\n", payload);
+        case WStype_BIN:
+          Serial.printf("[WSc] get binary length: %u\n", length);
+          // parse HTTP body
+          request = String((char*)payload);
+          path = request.substring(request.indexOf("GET") + 4, request.indexOf("HTTP") - 1);
+
+          if (path.equals("/owo")) {
+            webSocket.sendTXT("HTTP/1.1 200 OK\r\nServer: ESP32\r\nX-Powered-By: ESP32Proxy\r\nConnection: close\r\nContent-Type: text/plain\r\n\r\nuwu");
+            break;
+          }
+
+          webSocket.sendTXT("HTTP/1.1 200 OK\r\nServer: ESP32\r\nX-Powered-By: ESP32Proxy\r\nConnection: close\r\nContent-Type: text/html\r\n\r\nHello ESP");
+          break;
+        case WStype_ERROR:			
+        case WStype_FRAGMENT_TEXT_START:
+        case WStype_FRAGMENT_BIN_START:
+        case WStype_FRAGMENT:
+        case WStype_TEXT:
+        case WStype_FRAGMENT_FIN:
+            break;
+    }
+
+}
+
+void setup(){
+  Serial.begin(115200);
+
+  // Connect to Wi-Fi
+  WiFi.begin(ssid, password);
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(1000);
+    Serial.println("Connecting to WiFi..");
+  }
+
+  Serial.println("Connected to Wifi, Connecting to server.");
+  
+  // server address, port and URL
+  webSocket.begin("HOSTNAME", 80, "/proxy");
+    // webSocket.beginSSL("HOSTNAME", 443, "/proxy"); // WSS
+
+    // configure WS
+    webSocket.onEvent(webSocketEvent);
+  webSocket.setExtraHeaders("Token:TOKEN HERE"); // add token here
+    webSocket.setReconnectInterval(5000);
+}
+
+
+void loop() {
+  webSocket.loop();
+}
 ```
 
 ## Production reccomendations
